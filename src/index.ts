@@ -182,6 +182,34 @@ class DocmostClient {
     };
   }
 
+  async getPageUrl(pageId: string) {
+    await this.ensureAuthenticated();
+  
+    const response = await this.client.post("/pages/info", { pageId });
+    const page = response.data?.data;
+  
+    if (!page) {
+      throw new Error(`Page with ID ${pageId} not found.`);
+    }
+  
+    const baseURL = (this.client.defaults.baseURL || "").replace(/\/api\/?$/, "");
+  
+    const pagePath =
+      page.path ||
+      (page.slug ? `/p/${page.slug}` : null) ||
+      (page.id ? `/p/${page.id}` : null);
+  
+    if (!pagePath) {
+      throw new Error(`Could not determine URL for page ${pageId}.`);
+    }
+  
+    return {
+      pageId: page.id,
+      title: page.title,
+      url: `${baseURL}${pagePath.startsWith("/") ? pagePath : `/${pagePath}`}`,
+    };
+  }
+
   /**
    * Create a new page with title and content.
    *
@@ -413,6 +441,21 @@ server.registerTool(
   async ({ pageId }) => {
     const page = await docmostClient.getPage(pageId);
     return jsonContent(page);
+  },
+);
+
+// Tool: get_page_url
+server.registerTool(
+  "get_page_url",
+  {
+    description: "Get the absolute URL of a specific Docmost page by ID.",
+    inputSchema: {
+      pageId: z.string().describe("ID of the page"),
+    },
+  },
+  async ({ pageId }) => {
+    const result = await docmostClient.getPageUrl(pageId);
+    return jsonContent(result);
   },
 );
 
