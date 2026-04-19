@@ -283,8 +283,14 @@ class DocmostClient {
       spaceId,
     });
 
-    // Filter search results (data is directly an array)
-    const items = response.data?.data || [];
+    // Some Docmost deployments return an array in data, others wrap it in data.items.
+    // Normalize both shapes to avoid runtime "items.map is not a function".
+    const data = response.data?.data;
+    const items = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.items)
+        ? data.items
+        : [];
     const filteredItems = items.map((item: any) => filterSearchResult(item));
 
     return {
